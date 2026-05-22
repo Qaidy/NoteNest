@@ -12,7 +12,8 @@ class NoteController extends Controller
      */
     public function index()
     {
-        //
+        $notes = auth()->user()->notes()->latest()->get();
+        return view('notes.index', compact('notes'));
     }
 
     /**
@@ -20,7 +21,7 @@ class NoteController extends Controller
      */
     public function create()
     {
-        //
+        return view('notes.create');
     }
 
     /**
@@ -28,7 +29,17 @@ class NoteController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+        ]);
+
+        auth()->user()->notes()->create([
+            'title' => $request->title,
+            'content' => $request->content,
+        ]);
+
+        return redirect()->route('notes.index')->with('success', 'Note created successfully.');
     }
 
     /**
@@ -36,7 +47,10 @@ class NoteController extends Controller
      */
     public function show(Note $note)
     {
-        //
+        if ($note->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized action.');
+        }
+        return view('notes.show', compact('note'));
     }
 
     /**
@@ -44,7 +58,10 @@ class NoteController extends Controller
      */
     public function edit(Note $note)
     {
-        //
+        if ($note->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized action.');
+        }
+        return view('notes.edit', compact('note'));
     }
 
     /**
@@ -52,7 +69,21 @@ class NoteController extends Controller
      */
     public function update(Request $request, Note $note)
     {
-        //
+        if ($note->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+        ]);
+
+        $note->update([
+            'title' => $request->title,
+            'content' => $request->content,
+        ]);
+
+        return redirect()->route('notes.index')->with('success', 'Note updated successfully.');
     }
 
     /**
@@ -60,6 +91,12 @@ class NoteController extends Controller
      */
     public function destroy(Note $note)
     {
-        //
+        if ($note->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $note->delete();
+
+        return redirect()->route('notes.index')->with('success', 'Note deleted successfully.');
     }
 }
