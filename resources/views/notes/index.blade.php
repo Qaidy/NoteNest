@@ -16,8 +16,8 @@
         </div>
     </x-slot>
 
-    <div class="py-12" x-data="{ search: '', showDeleteModal: false, deleteAction: '' }">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div x-data="{ search: '', showDeleteModal: false, deleteAction: '' }">
+        <div>
             <!-- Success Alert -->
             @if (session('success'))
                 <div x-data="{ show: true }" x-show="show" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-xl flex items-center justify-between">
