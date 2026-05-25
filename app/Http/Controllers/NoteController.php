@@ -4,15 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Models\Note;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class NoteController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $notes = auth()->user()->notes()->latest()->get();
+        $query = auth()->user()->notes()->latest();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('content', 'like', "%{$search}%");
+            });
+        }
+
+        $notes = $query->paginate(15)->withQueryString();
+
         return view('notes.index', compact('notes'));
     }
 
@@ -38,6 +50,8 @@ class NoteController extends Controller
             'title' => $request->title,
             'content' => $request->content,
         ]);
+
+        $this->clearDashboardCache();
 
         return redirect()->route('notes.index')->with('success', 'Note created successfully.');
     }
@@ -83,6 +97,8 @@ class NoteController extends Controller
             'content' => $request->content,
         ]);
 
+        $this->clearDashboardCache();
+
         return redirect()->route('notes.index')->with('success', 'Note updated successfully.');
     }
 
@@ -97,6 +113,17 @@ class NoteController extends Controller
 
         $note->delete();
 
+        $this->clearDashboardCache();
+
         return redirect()->route('notes.index')->with('success', 'Note deleted successfully.');
+    }
+
+    /**
+     * Clear dashboard cache for the user.
+     */
+    private function clearDashboardCache()
+    {
+        $userId = auth()->id();
+        Cache::forget("user.{$userId}.notes_count");
     }
 }

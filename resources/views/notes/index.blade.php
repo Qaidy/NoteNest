@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div x-data="{ search: '', showDeleteModal: false, deleteAction: '' }">
+    <div x-data="{ isLoading: true }" x-init="$nextTick(() => { isLoading = false })">
         
         <!-- Header & Actions -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
@@ -9,12 +9,12 @@
             </div>
             
             <div class="flex items-center gap-3">
-                <div class="relative w-full sm:w-64 group">
+                <form x-ref="searchForm" action="{{ route('notes.index') }}" method="GET" class="relative w-full sm:w-64 group">
                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                         <svg class="w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
-                    <input type="text" x-model="search" placeholder="Filter notes..." class="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all duration-200 shadow-sm" />
-                </div>
+                    <input type="text" name="search" value="{{ request('search') }}" @input.debounce.500ms="$refs.searchForm.submit()" placeholder="Filter notes..." class="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all duration-200 shadow-sm" />
+                </form>
                 
                 <a href="{{ route('notes.create') }}" class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-emerald-500/30 transition-all duration-200 shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -51,12 +51,27 @@
                 </a>
             </div>
         @else
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" x-show="true">
+            <!-- Skeleton Loader -->
+            <div x-show="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                @for($i = 0; $i < min($notes->count(), 6); $i++)
+                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 p-6 shadow-sm animate-pulse flex flex-col h-48">
+                    <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
+                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
+                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mb-2"></div>
+                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-4/6 mb-4 flex-1"></div>
+                    <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mt-auto"></div>
+                </div>
+                @endfor
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" x-show="!isLoading" x-cloak>
                 @foreach($notes as $note)
-                    <div x-show="search === '' || '{{ addslashes(strtolower($note->title)) }}'.includes(search.toLowerCase()) || '{{ addslashes(strtolower($note->content)) }}'.includes(search.toLowerCase())"
-                         x-transition:enter="transition ease-out duration-300"
-                         x-transition:enter-start="opacity-0 scale-95"
-                         x-transition:enter-end="opacity-100 scale-100"
+                    <div x-data="{ deleting: false, noteId: '{{ $note->id }}' }" 
+                         @note-deleted.window="if ($event.detail.id === noteId) deleting = true"
+                         x-show="!deleting"
+                         x-transition:leave="transition ease-in duration-200"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
                          class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-800 transition-all duration-200 flex flex-col overflow-hidden group">
                         
                         <!-- Content -->
@@ -80,17 +95,23 @@
                             <a href="{{ route('notes.edit', $note) }}" class="p-2 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors" title="Edit note">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                             </a>
-                            <button type="button" @click="showDeleteModal = true; deleteAction = '{{ route('notes.destroy', $note) }}'" class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors" title="Delete note">
+                            <button type="button" @click="$dispatch('open-delete-modal', { action: '{{ route('notes.destroy', $note) }}', id: '{{ $note->id }}' })" class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors" title="Delete note">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                         </div>
                     </div>
                 @endforeach
             </div>
+
+            <div class="mt-8" x-show="!isLoading" x-cloak>
+                {{ $notes->links() }}
+            </div>
         @endif
 
         <!-- Delete Modal -->
-        <div x-show="showDeleteModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div x-data="{ showDeleteModal: false, deleteAction: '', currentNoteId: '' }" 
+             @open-delete-modal.window="showDeleteModal = true; deleteAction = $event.detail.action; currentNoteId = $event.detail.id"
+             x-show="showDeleteModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;" x-cloak>
             <div class="fixed inset-0 bg-gray-900/60 dark:bg-black/70 backdrop-blur-sm transition-opacity" @click="showDeleteModal = false"></div>
 
             <div class="flex items-center justify-center min-h-screen p-4 text-center">
@@ -114,7 +135,7 @@
                         <button type="button" @click="showDeleteModal = false" class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                             Cancel
                         </button>
-                        <form :action="deleteAction" method="POST" class="inline">
+                        <form :action="deleteAction" method="POST" class="inline" @submit="showDeleteModal = false; $dispatch('note-deleted', { id: currentNoteId }); setTimeout(() => $el.submit(), 50)">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors">

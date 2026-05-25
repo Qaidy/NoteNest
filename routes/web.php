@@ -4,6 +4,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\NoteController;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\DashboardController;
+
 // ⛔ HAPUS welcome page
 Route::get('/', function () {
     return auth()->check()
@@ -12,9 +14,7 @@ Route::get('/', function () {
 });
 
 // dashboard (protected)
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 
 // auth required routes
 Route::middleware('auth')->group(function () {

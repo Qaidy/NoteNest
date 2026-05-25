@@ -11,10 +11,6 @@
         </a>
     </div>
 
-    @php
-        $totalNotes = auth()->user()->notes()->count();
-        $recentNotes = auth()->user()->notes()->latest()->take(3)->get();
-    @endphp
 
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
