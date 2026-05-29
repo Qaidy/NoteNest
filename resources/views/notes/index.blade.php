@@ -135,7 +135,7 @@
                         <button type="button" @click="showDeleteModal = false" class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                             Cancel
                         </button>
-                        <form :action="deleteAction" method="POST" class="inline" @submit="showDeleteModal = false; $dispatch('note-deleted', { id: currentNoteId }); setTimeout(() => $el.submit(), 50)">
+                        <form :action="deleteAction" method="POST" class="inline" @submit.prevent="showDeleteModal = false; $dispatch('note-deleted', { id: currentNoteId }); setTimeout(() => $el.submit(), 50)">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors">
